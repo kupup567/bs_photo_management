@@ -727,8 +727,7 @@ app.post('/api/images/upload', authenticateToken, upload.single('file'), async (
 
 // 图片编辑接口 - 修复版本
 app.post('/api/images/:id/edit', authenticateToken, async (req, res) => {
-  // 在函数开头声明 editedPath，确保它在整个函数作用域中可用
-  let editedPath;
+  let editedPath = null; // 提前声明并初始化
   
   try {
     const { id } = req.params;
@@ -736,6 +735,11 @@ app.post('/api/images/:id/edit', authenticateToken, async (req, res) => {
     const { operations } = req.body;
 
     console.log('图片编辑请求:', { id, userId, operations });
+
+    // 验证请求体
+    if (!operations || typeof operations !== 'object') {
+      return res.status(400).json({ error: '缺少有效的编辑操作' });
+    }
 
     // 验证图片所有权
     const [images] = await pool.execute(
@@ -758,7 +762,7 @@ app.post('/api/images/:id/edit', authenticateToken, async (req, res) => {
     const timestamp = Date.now();
     const fileExt = path.extname(image.original_path);
     const editedFilename = `edited-${timestamp}-${path.basename(image.original_path, fileExt)}${fileExt}`;
-    editedPath = path.join(originalsDir, editedFilename); // 这里赋值
+    editedPath = path.join(originalsDir, editedFilename);
 
     console.log('开始图片编辑处理...');
 
@@ -768,6 +772,12 @@ app.post('/api/images/:id/edit', authenticateToken, async (req, res) => {
     if (operations.crop && operations.crop.width > 0 && operations.crop.height > 0) {
       console.log('应用裁剪:', operations.crop);
       const { x, y, width, height } = operations.crop;
+      
+      // 验证裁剪参数有效性
+      if (x < 0 || y < 0 || width <= 0 || height <= 0) {
+        return res.status(400).json({ error: '裁剪参数无效' });
+      }
+      
       sharpInstance = sharpInstance.extract({ 
         left: Math.max(0, Math.round(x)), 
         top: Math.max(0, Math.round(y)), 
@@ -786,6 +796,17 @@ app.post('/api/images/:id/edit', authenticateToken, async (req, res) => {
     if (operations.filters) {
       console.log('应用滤镜:', operations.filters);
       const { brightness, contrast, saturation } = operations.filters;
+      
+      // 验证滤镜参数范围
+      if (brightness && (brightness < 0.1 || brightness > 3)) {
+        return res.status(400).json({ error: '亮度参数超出范围 (0.1-3)' });
+      }
+      if (contrast && (contrast < 0.1 || contrast > 3)) {
+        return res.status(400).json({ error: '对比度参数超出范围 (0.1-3)' });
+      }
+      if (saturation && (saturation < 0 || saturation > 3)) {
+        return res.status(400).json({ error: '饱和度参数超出范围 (0-3)' });
+      }
       
       if (brightness && brightness !== 1) {
         sharpInstance = sharpInstance.modulate({ brightness: parseFloat(brightness) });
@@ -836,9 +857,14 @@ app.post('/api/images/:id/edit', authenticateToken, async (req, res) => {
       errorMessage = '数据库字段错误，请联系管理员';
     } else if (error.message.includes('Input file is missing')) {
       errorMessage = '原始图片文件不存在';
+    } else if (error.message.includes('extract')) {
+      errorMessage = '裁剪参数无效或超出图片范围';
     }
     
-    res.status(500).json({ error: errorMessage, details: error.message });
+    res.status(500).json({ 
+      error: errorMessage, 
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined 
+    });
   }
 });
 
