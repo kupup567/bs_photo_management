@@ -795,7 +795,7 @@ app.post('/api/images/:id/edit', authenticateToken, async (req, res) => {
     // 应用滤镜
     if (operations.filters) {
       console.log('应用滤镜:', operations.filters);
-      const { brightness, contrast, saturation } = operations.filters;
+      const { brightness, contrast, saturation, temperature, tint } = operations.filters;
       
       // 验证滤镜参数范围
       if (brightness && (brightness < 0.1 || brightness > 3)) {
@@ -807,7 +807,14 @@ app.post('/api/images/:id/edit', authenticateToken, async (req, res) => {
       if (saturation && (saturation < 0 || saturation > 3)) {
         return res.status(400).json({ error: '饱和度参数超出范围 (0-3)' });
       }
+      if (temperature && (temperature < -100 || temperature > 100)) {
+        return res.status(400).json({ error: '色温参数超出范围 (-100-100)' });
+      }
+      if (tint && (tint < -100 || tint > 100)) {
+        return res.status(400).json({ error: '色调参数超出范围 (-100-100)' });
+      }
       
+      // 应用基础滤镜
       if (brightness && brightness !== 1) {
         sharpInstance = sharpInstance.modulate({ brightness: parseFloat(brightness) });
       }
@@ -816,6 +823,23 @@ app.post('/api/images/:id/edit', authenticateToken, async (req, res) => {
       }
       if (saturation && saturation !== 1) {
         sharpInstance = sharpInstance.modulate({ saturation: parseFloat(saturation) });
+      }
+      
+      // 应用色温和色调（需要转换为RGB调整）
+      if (temperature !== 0 || tint !== 0) {
+        // 色温调整：转换为RGB调整
+        // 这里使用一个简化的色温调整算法
+        // 实际应用中可能需要更精确的色彩科学计算
+        
+        const tempAdjust = temperature / 100; // -1 到 1
+        const tintAdjust = tint / 100; // -1 到 1
+        
+        // 创建调整通道
+        sharpInstance = sharpInstance.tint({
+          r: Math.round(255 * (1 + tempAdjust * 0.5)),  // 暖色增加红色
+          g: Math.round(255 * (1 + tintAdjust * 0.5)),  // 色调调整绿色
+          b: Math.round(255 * (1 - tempAdjust * 0.3))   // 冷色增加蓝色
+        });
       }
     }
 

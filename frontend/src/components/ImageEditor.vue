@@ -60,6 +60,53 @@
               style="width: 120px;"
               @change="applyFilters"
             />
+            
+            <!-- 新增：色温调整 -->
+            <span>色温:</span>
+            <el-slider
+              v-model="filters.temperature"
+              :min="-100"
+              :max="100"
+              :step="1"
+              style="width: 120px;"
+              @change="applyFilters"
+              show-stops
+              :marks="{
+                '-100': '冷',
+                '0': '中',
+                '100': '暖'
+              }"
+            />
+            
+            <!-- 新增：色调调整 -->
+            <span>色调:</span>
+            <el-slider
+              v-model="filters.tint"
+              :min="-100"
+              :max="100"
+              :step="1"
+              style="width: 120px;"
+              @change="applyFilters"
+              show-stops
+              :marks="{
+                '-100': '绿',
+                '0': '中',
+                '100': '紫'
+              }"
+            />
+          </div>
+
+          <el-divider direction="vertical" />
+
+          <!-- 新增：快捷滤镜按钮 -->
+          <div class="preset-buttons">
+            <el-button-group>
+              <el-button @click="applyPreset('vivid')" size="small">鲜艳</el-button>
+              <el-button @click="applyPreset('warm')" size="small">暖色</el-button>
+              <el-button @click="applyPreset('cool')" size="small">冷色</el-button>
+              <el-button @click="applyPreset('vintage')" size="small">复古</el-button>
+              <el-button @click="applyPreset('blackwhite')" size="small">黑白</el-button>
+            </el-button-group>
           </div>
 
           <el-divider direction="vertical" />
@@ -104,57 +151,59 @@
 
           <!-- EXIF信息面板 -->
           <div class="info-panel">
-            <el-card>
-              <template #header>
-                <h3>图片信息</h3>
-              </template>
+            <!-- 使用普通 div 替代 el-card 以避免分隔线 -->
+            <div class="info-card">
+              <h3 style="margin: 0 0 16px 0; padding: 0; font-size: 16px; color: #333; font-weight: 500;">
+                图片信息
+              </h3>
               
-              <div v-if="exifInfo" class="exif-info">
-                <div class="info-item">
-                  <span class="label">相机型号:</span>
-                  <span class="value">{{ exifInfo.camera_model || '未知' }}</span>
+              <!-- 调整参数部分 -->
+              <div class="adjustment-info">
+                <h4 style="margin: 0 0 12px 0; font-size: 14px; color: #333; font-weight: 500;">
+                  当前调整
+                </h4>
+                <div class="adjustment-list">
+                  <div class="adjustment-item" style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px;">
+                    <span style="color: #666;">亮度:</span>
+                    <span style="color: #409EFF; font-weight: 500;">{{ formatAdjustmentValue(filters.brightness) }}</span>
+                  </div>
+                  <div class="adjustment-item" style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px;">
+                    <span style="color: #666;">对比度:</span>
+                    <span style="color: #409EFF; font-weight: 500;">{{ formatAdjustmentValue(filters.contrast) }}</span>
+                  </div>
+                  <div class="adjustment-item" style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px;">
+                    <span style="color: #666;">饱和度:</span>
+                    <span style="color: #409EFF; font-weight: 500;">{{ formatAdjustmentValue(filters.saturation) }}</span>
+                  </div>
+                  <div class="adjustment-item" style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px;">
+                    <span style="color: #666;">色温:</span>
+                    <span style="color: #409EFF; font-weight: 500;">{{ formatTemperatureValue(filters.temperature) }}</span>
+                  </div>
+                  <div class="adjustment-item" style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 13px;">
+                    <span style="color: #666;">色调:</span>
+                    <span style="color: #409EFF; font-weight: 500;">{{ formatTintValue(filters.tint) }}</span>
+                  </div>
                 </div>
-                <div class="info-item">
-                  <span class="label">拍摄时间:</span>
-                  <span class="value">{{ formatDate(exifInfo.taken_time) }}</span>
-                </div>
-                <div class="info-item">
-                  <span class="label">曝光时间:</span>
-                  <span class="value">{{ exifInfo.exposure_time || '未知' }}</span>
-                </div>
-                <div class="info-item">
-                  <span class="label">光圈:</span>
-                  <span class="value">{{ exifInfo.f_number || '未知' }}</span>
-                </div>
-                <div class="info-item">
-                  <span class="label">ISO:</span>
-                  <span class="value">{{ exifInfo.iso_speed || '未知' }}</span>
-                </div>
-                <div class="info-item">
-                  <span class="label">焦距:</span>
-                  <span class="value">{{ exifInfo.focal_length || '未知' }}</span>
-                </div>
-              </div>
-              
-              <div v-else class="loading-info">
-                <el-skeleton :rows="5" animated />
               </div>
 
-              <!-- 标签展示 -->
+              <!-- 标签展示部分 -->
               <div class="tags-section">
-                <h4>智能标签</h4>
+                <h4 style="margin: 16px 0 12px 0; font-size: 14px; color: #333; font-weight: 500;">
+                  智能标签
+                </h4>
                 <div class="tags-list">
                   <el-tag
                     v-for="tag in imageTags"
                     :key="tag.name"
                     :type="getTagType(tag.type)"
                     size="small"
+                    style="margin-right: 4px; margin-bottom: 4px;"
                   >
                     {{ tag.name }}
                   </el-tag>
                 </div>
               </div>
-            </el-card>
+            </div>
           </div>
         </div>
       </div>
@@ -212,12 +261,53 @@ const imageDisplayInfo = reactive({
   offsetY: 0
 })
 
-// 滤镜状态
+// 滤镜状态 - 在原有基础上增加色温和色调
 const filters = reactive({
   brightness: 1,
   contrast: 1,
-  saturation: 1
+  saturation: 1,
+  temperature: 0,   // 色温: -100 (冷) 到 100 (暖)
+  tint: 0           // 色调: -100 (绿) 到 100 (紫)
 })
+
+// 预设滤镜配置
+const filterPresets = {
+  vivid: {
+    brightness: 1.2,
+    contrast: 1.3,
+    saturation: 1.4,
+    temperature: 10,
+    tint: 5
+  },
+  warm: {
+    brightness: 1.1,
+    contrast: 1.2,
+    saturation: 1.2,
+    temperature: 60,
+    tint: 10
+  },
+  cool: {
+    brightness: 1.1,
+    contrast: 1.2,
+    saturation: 1.0,
+    temperature: -60,
+    tint: -5
+  },
+  vintage: {
+    brightness: 0.9,
+    contrast: 1.0,
+    saturation: 0.7,
+    temperature: 40,
+    tint: 15
+  },
+  blackwhite: {
+    brightness: 1.0,
+    contrast: 1.3,
+    saturation: 0,
+    temperature: 0,
+    tint: 0
+  }
+}
 
 const exifInfo = ref(null)
 const imageTags = ref([])
@@ -226,10 +316,40 @@ const imageUrl = computed(() => {
   return currentImage.value?.originalUrl || ''
 })
 
-const imageStyle = computed(() => ({
-  transform: `rotate(${editingState.rotation}deg) scale(${editingState.scale})`,
-  filter: `brightness(${filters.brightness}) contrast(${filters.contrast}) saturate(${filters.saturation})`
-}))
+// 更新imageStyle computed属性以包含色温和色调
+const imageStyle = computed(() => {
+  // 构建CSS滤镜字符串
+  const filterParts = [
+    `brightness(${filters.brightness})`,
+    `contrast(${filters.contrast})`,
+    `saturate(${filters.saturation})`
+  ]
+
+  // 添加色温效果（通过hue-rotate和sepia模拟）
+  if (filters.temperature !== 0) {
+    // 温度调整：正值为暖色（红/黄），负值为冷色（蓝）
+    const tempValue = Math.abs(filters.temperature) / 100 * 0.3
+    if (filters.temperature > 0) {
+      // 暖色调：增加sepia效果
+      filterParts.push(`sepia(${tempValue})`)
+    } else {
+      // 冷色调：通过组合hue-rotate和sepia实现
+      filterParts.push(`hue-rotate(180deg) sepia(${tempValue}) hue-rotate(-180deg)`)
+    }
+  }
+
+  // 添加色调效果（通过hue-rotate）
+  if (filters.tint !== 0) {
+    // 色调调整：正值为偏紫，负值为偏绿
+    const tintValue = filters.tint / 100 * 60 // -60deg 到 60deg
+    filterParts.push(`hue-rotate(${tintValue}deg)`)
+  }
+
+  return {
+    transform: `rotate(${editingState.rotation}deg) scale(${editingState.scale})`,
+    filter: filterParts.join(' ')
+  }
+})
 
 const cropStyle = computed(() => ({
   left: `${crop.x}px`,
@@ -364,10 +484,8 @@ const screenToImageCoords = (screenX, screenY) => {
   return { x: originalX, y: originalY }
 }
 
-// —— 替换：imageToScreenCoords ——
 // 输入：imgX/imgY（原图像像素坐标）
 // 输出：{ x, y } 页面坐标（client）
-// 注意：仍然返回页面坐标（若需要容器局部坐标见下 updateCropScreenPosition）
 const imageToScreenCoords = (imgX, imgY) => {
   const imgRect = editableImage.value.getBoundingClientRect()
 
@@ -419,7 +537,6 @@ const updateCropScreenPosition = () => {
   crop.height = Math.round(bottomRight.y - topLeft.y)
 }
 
-// —— 替换：updateCropImagePosition ——
 // 把 crop.x/crop.y（容器局部坐标）转换为 crop.original*（原始图片像素坐标）
 const updateCropImagePosition = () => {
   if (!editableImage.value || !imageContainer.value) return
@@ -508,7 +625,6 @@ const startCropInteraction = (e) => {
   document.addEventListener('mousemove', doMove)
   document.addEventListener('mouseup', stopMove)
 }
-
 
 const startResize = (direction, e) => {
   e.preventDefault()
@@ -632,7 +748,6 @@ const onImageMouseDown = (e) => {
   }
 }
 
-
 // 监听窗口大小变化
 const onResize = () => {
   calculateImageDisplayInfo()
@@ -662,6 +777,19 @@ const rotateImage = () => {
   }
 }
 
+// 新增：应用预设滤镜
+const applyPreset = (presetName) => {
+  if (filterPresets[presetName]) {
+    const preset = filterPresets[presetName]
+    filters.brightness = preset.brightness
+    filters.contrast = preset.contrast
+    filters.saturation = preset.saturation
+    filters.temperature = preset.temperature
+    filters.tint = preset.tint
+    ElMessage.success(`已应用${presetName}滤镜`)
+  }
+}
+
 const applyFilters = () => {
   // 滤镜实时应用，通过CSS filter实现
 }
@@ -672,6 +800,8 @@ const resetEditing = () => {
   filters.brightness = 1
   filters.contrast = 1
   filters.saturation = 1
+  filters.temperature = 0  // 新增：重置色温
+  filters.tint = 0        // 新增：重置色调
   crop.visible = false
   activeTool.value = ''
 }
@@ -733,6 +863,25 @@ const saveEditing = async () => {
   }
 }
 
+// 新增：格式化调整值显示
+const formatAdjustmentValue = (value) => {
+  if (value === 1) return '0%'
+  const percent = ((value - 1) * 100).toFixed(0)
+  return percent > 0 ? `+${percent}%` : `${percent}%`
+}
+
+// 新增：格式化色温值显示
+const formatTemperatureValue = (value) => {
+  if (value === 0) return '0'
+  return value > 0 ? `+${value} (暖)` : `${value} (冷)`
+}
+
+// 新增：格式化色调值显示
+const formatTintValue = (value) => {
+  if (value === 0) return '0'
+  return value > 0 ? `+${value} (紫)` : `${value} (绿)`
+}
+
 // 添加事件发射器
 const emit = defineEmits(['edited'])
 
@@ -776,7 +925,6 @@ const getTagType = (type) => {
   return types[type] || 'info'
 }
 
-
 defineExpose({
   show,
   hide
@@ -789,6 +937,7 @@ defineExpose({
   flex-direction: column;
   height: 80vh;
 }
+
 
 .toolbar {
   display: flex;
@@ -811,6 +960,12 @@ defineExpose({
   font-size: 14px;
   color: #666;
   white-space: nowrap;
+  min-width: 40px;
+}
+
+.preset-buttons {
+  display: flex;
+  align-items: center;
 }
 
 .editor-area {
@@ -937,6 +1092,37 @@ defineExpose({
   padding: 10px 0;
 }
 
+/* 新增：调整信息样式 */
+.adjustment-info {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #e6e6e6;
+}
+
+.adjustment-info h4 {
+  margin: 0 0 12px 0;
+  color: #333;
+  font-size: 14px;
+}
+
+.adjustment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.adjustment-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #666;
+}
+
+.adjustment-item span:last-child {
+  color: #409EFF;
+  font-weight: 500;
+}
+
 .tags-section {
   margin-top: 20px;
 }
@@ -975,8 +1161,18 @@ defineExpose({
   }
   
   .filter-controls {
+    flex-direction: column;
+    align-items: flex-start;
     width: 100%;
-    justify-content: space-between;
+  }
+  
+  .filter-controls span {
+    min-width: 60px;
+  }
+  
+  .preset-buttons {
+    width: 100%;
+    justify-content: center;
   }
 }
 </style>

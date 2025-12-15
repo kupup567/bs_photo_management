@@ -209,6 +209,16 @@
                 <el-icon><Star /></el-icon>
                 AI分析
               </el-button>
+              <el-button
+                type="info"
+                size="small"
+                @click="downloadImage(image)"
+                :loading="downloadingImageId === image.id"
+                class="download-btn"
+              >
+                <el-icon><Download /></el-icon>
+                下载
+              </el-button>
             </div>
           </div>
         </div>
@@ -283,6 +293,7 @@ import { ref, onMounted, reactive, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Delete, Edit, Picture, RefreshLeft, EditPen, Plus, Filter, Star} from '@element-plus/icons-vue'
 import ImageEditor from '../components/ImageEditor.vue'
+import { Download } from '@element-plus/icons-vue'
 import { useSwipe } from '@vueuse/core'
 
 const loading = ref(false)
@@ -301,8 +312,50 @@ const addingTag = ref(false)
 const currentImageForTag = ref(null)
 const tagSearchKeyword = ref('')
 const analyzingImageId = ref(null)
+const downloadingImageId = ref(null)
 
+const downloadImage = async (image) => {
+  try {
+    downloadingImageId.value = image.id
+    
+    // 获取图片URL（优先使用编辑后的版本）
+    const imageUrl = image.displayUrl || image.originalUrl || image.thumbnailUrl
+    if (!imageUrl) {
+      ElMessage.error('无法获取图片地址')
+      return
+    }
+    
+    const response = await fetch(imageUrl)
+    if (!response.ok) {
+      throw new Error('下载失败')
+    }
+    
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    
+    // 使用图片原始文件名
+    link.download = image.filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    
+    ElMessage.success('图片下载完成')
+  } catch (error) {
+    console.error('下载图片失败:', error)
+    ElMessage.error('下载失败，请稍后重试')
+  } finally {
+    downloadingImageId.value = null
+  }
+}
 
+// 添加获取文件扩展名的辅助函数（虽然可能用不到，但保持一致性）
+const getFileExtension = (filename) => {
+  const match = filename.match(/\.[^/.]+$/)
+  return match ? match[0] : '.jpg'
+}
 
 const analyzeWithAI = async (imageId) => {
   try {
