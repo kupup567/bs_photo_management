@@ -35,3 +35,7 @@ simple-image-manager/
 │
 ├── 📄 database.sql                      # 数据库初始化脚本
 └── 📄 ReadMe.txt                        # 项目说明文档
+
+---
+
+**Docker:** 项目已附带 `docker-compose.yml`、`backend/Dockerfile` 与 `frontend/Dockerfile`，见 `DOCKER.md`，可用于快速在 Docker 上运行（包含 MySQL 初始化）。
