@@ -6,7 +6,7 @@ module.exports = {
     env: process.env.NODE_ENV || 'development'
   },
   database: {
-    host: process.env.DB_HOST || 'localhost',
+    host: process.env.DB_HOST || 'db',
     user: process.env.DB_USER || 'image_user',
     password: process.env.DB_PASSWORD || 'password123',
     database: process.env.DB_NAME || 'image_manager',
